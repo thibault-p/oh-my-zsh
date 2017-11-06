@@ -45,6 +45,8 @@ CURRENT_BG='NONE'
   # escape sequence with a single literal character.
   # Do not change this! Do not make it '\u2b80'; that is the old, wrong code point.
   SEGMENT_SEPARATOR=$'\ue0b0'
+  UP_ARROW=$'\u1f81d'
+  DOWN_ARROW=$'\u1f81f'
 }
 
 # Begin a segment
@@ -92,7 +94,7 @@ prompt_git() {
     local LC_ALL="" LC_CTYPE="en_US.UTF-8"
     PL_BRANCH_CHAR=$'\ue0a0'         # 
   }
-  local ref dirty mode repo_path
+  local ref dirty mode repo_path upstream downstream branch_name
   repo_path=$(git rev-parse --git-dir 2>/dev/null)
 
   if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
@@ -112,6 +114,24 @@ prompt_git() {
       mode=" >R>"
     fi
 
+    # get the number of commits ahead and behind
+    branch_name=$(echo -n "${ref/refs\/heads\//}")
+    if $(git symbolic-ref HEAD >/dev/null 2>&1); then
+      # we have a revision
+      upstream=$(git rev-list --left-only --count $branch_name...origin/$branch_name)
+      if [[ $upstream -gt 0 ]] ; then
+        upstream=" 🠵$upstream"
+      else
+        upstream=""
+      fi
+      downstream=$(git rev-list --right-only --count $branch_name...origin/$branch_name)
+      if [[ $downstream -gt 0 ]] ; then
+        downstream=" 🠷$downstream"
+      else
+        downstream=""
+      fi
+    fi
+
     setopt promptsubst
     autoload -Uz vcs_info
 
@@ -123,7 +143,7 @@ prompt_git() {
     zstyle ':vcs_info:*' formats ' %u%c'
     zstyle ':vcs_info:*' actionformats ' %u%c'
     vcs_info
-    echo -n "${ref/refs\/heads\//$PL_BRANCH_CHAR }${vcs_info_msg_0_%% }${mode}"
+    echo -n "${ref/refs\/heads\//$PL_BRANCH_CHAR }${vcs_info_msg_0_%% }${mode}${upstream}${downstream}"
   fi
 }
 
